@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import joblib
 from pathlib import Path
 
-# =========================================================
+# =====================================================
 # 1. PAGE CONFIGURATION
-# =========================================================
+# =====================================================
 st.set_page_config(
     page_title="Sara Enterprises | Sales Analysis",
     page_icon="📊",
@@ -20,29 +20,56 @@ ORDERS_FILE = BASE_DIR / "Dataset" / "orders.csv"
 MODEL_FILE = BASE_DIR / "model" / "model.pkl"
 
 
-# =========================================================
-# 2. LOAD DATA
-# =========================================================
+# =====================================================
+# 2. LOAD AND MERGE DATA
+# =====================================================
 @st.cache_data
 def load_data():
     if not CUSTOMER_FILE.exists():
-        raise FileNotFoundError(f"Customer file not found: {CUSTOMER_FILE.name}")
+        raise FileNotFoundError(
+            "Dataset/customer.csv file was not found."
+        )
 
     if not ORDERS_FILE.exists():
-        raise FileNotFoundError(f"Orders file not found: {ORDERS_FILE.name}")
+        raise FileNotFoundError(
+            "Dataset/orders.csv file was not found."
+        )
 
     customers = pd.read_csv(CUSTOMER_FILE)
     orders = pd.read_csv(ORDERS_FILE)
 
+    # Clean column names
+    customers.columns = customers.columns.str.strip()
+    orders.columns = orders.columns.str.strip()
+
     if "CustomerID" not in customers.columns:
-        raise ValueError("CustomerID column is missing from customer.csv")
+        raise ValueError(
+            "CustomerID column is missing from customer.csv."
+        )
 
     if "CustomerID" not in orders.columns:
-        raise ValueError("CustomerID column is missing from orders.csv")
+        raise ValueError(
+            "CustomerID column is missing from orders.csv."
+        )
 
-    # Make join-key formats consistent
-    customers["CustomerID"] = customers["CustomerID"].astype("string").str.strip()
-    orders["CustomerID"] = orders["CustomerID"].astype("string").str.strip()
+    # Standardize CustomerID for merging
+    customers["CustomerID"] = (
+        customers["CustomerID"].astype("string").str.strip()
+    )
+    orders["CustomerID"] = (
+        orders["CustomerID"].astype("string").str.strip()
+    )
+
+    # Remove blank IDs before merging
+    customers = customers.dropna(subset=["CustomerID"])
+    orders = orders.dropna(subset=["CustomerID"])
+
+    customers = customers[
+        customers["CustomerID"] != ""
+    ]
+    orders = orders[
+        orders["CustomerID"] != ""
+    ]
 
     data = pd.merge(
         customers,
@@ -53,8 +80,8 @@ def load_data():
 
     if data.empty:
         raise ValueError(
-            "The customer and orders files produced no matching rows. "
-            "Check whether CustomerID values match in both CSV files."
+            "No matching CustomerID values were found in the two CSV files. "
+            "Please check the IDs in both datasets."
         )
 
     return data
@@ -63,14 +90,14 @@ def load_data():
 try:
     df = load_data()
 except Exception as e:
-    st.error("Unable to load the project data.")
+    st.error("Unable to load the datasets.")
     st.code(str(e))
     st.stop()
 
 
-# =========================================================
-# 3. VALIDATE COLUMNS
-# =========================================================
+# =====================================================
+# 3. VALIDATE REQUIRED COLUMNS
+# =====================================================
 required_columns = [
     "CustomerID",
     "Product Category",
@@ -83,49 +110,62 @@ required_columns = [
     "Qty"
 ]
 
-missing_columns = [c for c in required_columns if c not in df.columns]
+missing_columns = [
+    column for column in required_columns
+    if column not in df.columns
+]
 
 if missing_columns:
-    st.error(f"Missing required columns: {missing_columns}")
+    st.error(
+        f"Required columns missing from merged data: {missing_columns}"
+    )
     st.write("Available columns:", df.columns.tolist())
     st.stop()
 
-# Ensure numeric fields are usable
-for col in ["Profit", "Amount", "Qty"]:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
+# Convert numeric fields safely
+for column in ["Profit", "Amount", "Qty"]:
+    df[column] = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    )
 
 
-# =========================================================
+# =====================================================
 # 4. HEADER
-# =========================================================
+# =====================================================
 st.title("Sara Enterprises - Sales Data Analysis")
-st.caption("Interactive sales analytics and machine-learning profit prediction")
+st.caption(
+    "Sales analytics dashboard with machine-learning profit prediction"
+)
 
-st.write(f"**Dataset shape:** {df.shape[0]:,} rows × {df.shape[1]} columns")
+st.write(
+    f"**Dataset Shape:** {df.shape[0]:,} rows × {df.shape[1]} columns"
+)
 
 
-# =========================================================
+# =====================================================
 # 5. FILTERS
-# =========================================================
+# =====================================================
 st.subheader("Filter Sales Data")
+
 
 def get_options(series):
     values = series.dropna().unique().tolist()
-    values = sorted(values, key=lambda x: str(x).lower())
+    values = sorted(values, key=lambda value: str(value).lower())
     return ["All"] + values
 
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    cat_filter = st.selectbox(
+    category_filter = st.selectbox(
         "Product Category",
         get_options(df["Product Category"]),
         key="category_filter"
     )
 
 with col2:
-    scat_filter = st.selectbox(
+    subcategory_filter = st.selectbox(
         "Product Sub-Category",
         get_options(df["Product Sub-Category"]),
         key="subcategory_filter"
@@ -152,38 +192,42 @@ with col5:
         key="gender_filter"
     )
 
+
 filtered_df = df.copy()
 
-filters = [
-    ("Product Category", cat_filter),
-    ("Product Sub-Category", scat_filter),
+selected_filters = [
+    ("Product Category", category_filter),
+    ("Product Sub-Category", subcategory_filter),
     ("State or Province", state_filter),
     ("City", city_filter),
     ("Gender", gender_filter)
 ]
 
-for column, selected_value in filters:
+for column, selected_value in selected_filters:
     if selected_value != "All":
         filtered_df = filtered_df[
             filtered_df[column] == selected_value
         ]
 
 
-# =========================================================
+# =====================================================
 # 6. KPI METRICS
-# =========================================================
+# =====================================================
 st.subheader("Sales Overview")
 
 if filtered_df.empty:
     st.warning(
-        "No records match the selected filters. "
-        "Change one or more filters to see results."
+        "No data matches these filters. "
+        "Please select different filters."
     )
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.metric("Total Orders / Rows", f"{len(filtered_df):,}")
+    st.metric(
+        "Total Orders / Rows",
+        f"{len(filtered_df):,}"
+    )
 
 with col2:
     st.metric(
@@ -210,42 +254,71 @@ with col5:
     )
 
 
-# =========================================================
-# 7. SAFE CHART HELPER
-# =========================================================
-def show_bar_chart(data, title, xlabel, ylabel, horizontal=False):
-    """
-    Display a chart safely, including when filtered data is empty.
-    """
+# =====================================================
+# 7. SAFE CHART FUNCTION
+# =====================================================
+def show_bar_chart(
+    data,
+    title,
+    xlabel,
+    ylabel,
+    horizontal=False
+):
+    # Never plot an empty Series
     if data.empty:
-        st.info(f"No data available for {title}. Try changing the filters.")
+        st.info(
+            f"No data available for '{title}'. "
+            "Try changing the filters."
+        )
+        return
+
+    # Ignore non-finite values
+    data = data[
+        pd.to_numeric(data, errors="coerce").notna()
+    ]
+
+    if data.empty:
+        st.info(f"No valid numeric values available for '{title}'.")
         return
 
     fig, ax = plt.subplots(figsize=(7, 4))
 
-    if horizontal:
-        data.plot(kind="barh", ax=ax)
-    else:
-        data.plot(kind="bar", ax=ax)
+    try:
+        if horizontal:
+            ax.barh(
+                data.index.astype(str),
+                data.values
+            )
+        else:
+            ax.bar(
+                data.index.astype(str),
+                data.values
+            )
 
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
 
-    if not horizontal:
-        ax.tick_params(axis="x", rotation=45)
+        if not horizontal:
+            ax.tick_params(
+                axis="x",
+                rotation=45
+            )
 
-    fig.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+        fig.tight_layout()
+        st.pyplot(fig)
+
+    finally:
+        plt.close(fig)
 
 
-# =========================================================
-# 8. CHARTS
-# =========================================================
+# =====================================================
+# 8. PROFIT CHARTS
+# =====================================================
 st.subheader("Sales and Profit Analysis")
 
 if not filtered_df.empty:
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -276,8 +349,8 @@ if not filtered_df.empty:
         show_bar_chart(
             profit_subcategory,
             "Profit by Product Sub-Category",
-            "Profit",
             "Product Sub-Category",
+            "Profit",
             horizontal=True
         )
 
@@ -298,9 +371,9 @@ if not filtered_df.empty:
         )
 
 
-# =========================================================
+# =====================================================
 # 9. DATA TABLE
-# =========================================================
+# =====================================================
 st.subheader("Detailed Sales Data")
 
 st.dataframe(
@@ -310,100 +383,122 @@ st.dataframe(
 )
 
 
-# =========================================================
-# 10. MACHINE LEARNING MODEL
-# =========================================================
+# =====================================================
+# 10. LOAD ML MODEL
+# =====================================================
 st.divider()
-st.subheader("Machine Learning: Profit Prediction")
+st.subheader("Machine Learning - Profit Prediction")
+
 
 @st.cache_resource
 def load_model():
     if not MODEL_FILE.exists():
-        raise FileNotFoundError("model/model.pkl was not found.")
+        raise FileNotFoundError(
+            "model/model.pkl file was not found."
+        )
 
     return joblib.load(MODEL_FILE)
 
 
+model = None
+
 try:
     model = load_model()
 except Exception as e:
-    st.error("Unable to load the saved ML model.")
-    st.code(str(e))
-    st.info(
-        "Check that model/model.pkl exists and was saved correctly."
-    )
-    st.stop()
-
-
-st.write(
-    "Select a product category and sub-category, "
-    "then enter the sales amount to estimate profit."
-)
-
-prediction_categories = (
-    df["Product Category"].dropna().unique().tolist()
-)
-prediction_subcategories = (
-    df["Product Sub-Category"].dropna().unique().tolist()
-)
-
-if not prediction_categories or not prediction_subcategories:
     st.warning(
-        "Prediction options are unavailable because the dataset "
-        "has no valid category or sub-category values."
+        "The dashboard is available, but the prediction model "
+        "could not be loaded."
     )
-    st.stop()
+    st.code(str(e))
 
-prediction_categories = sorted(
-    prediction_categories, key=lambda x: str(x).lower()
-)
-prediction_subcategories = sorted(
-    prediction_subcategories, key=lambda x: str(x).lower()
-)
 
-col1, col2, col3 = st.columns(3)
+# =====================================================
+# 11. PROFIT PREDICTION
+# =====================================================
+if model is not None:
 
-with col1:
-    prediction_category = st.selectbox(
-        "Prediction - Product Category",
-        prediction_categories
+    st.write(
+        "Select the product details and enter the sales amount."
     )
 
-with col2:
-    prediction_subcategory = st.selectbox(
-        "Prediction - Product Sub-Category",
-        prediction_subcategories
+    prediction_categories = sorted(
+        df["Product Category"].dropna().unique().tolist(),
+        key=lambda value: str(value).lower()
     )
 
-with col3:
-    sales_amount = st.number_input(
-        "Enter Sales Amount",
-        min_value=0.0,
-        value=0.0,
-        step=100.0
+    prediction_subcategories = sorted(
+        df["Product Sub-Category"].dropna().unique().tolist(),
+        key=lambda value: str(value).lower()
     )
 
-if st.button("Predict Profit", type="primary"):
-    input_data = pd.DataFrame({
-        "Product Category": [prediction_category],
-        "Product Sub-Category": [prediction_subcategory],
-        "Amount": [sales_amount]
-    })
-
-    try:
-        predictions = model.predict(input_data)
-
-        if len(predictions) == 0:
-            st.error("The model returned no prediction.")
-        else:
-            predicted_profit = float(predictions[0])
-            st.success(f"Predicted Profit: {predicted_profit:,.2f}")
-
-    except Exception as e:
-        st.error("The model could not make a prediction with these inputs.")
-        st.code(str(e))
-        st.info(
-            "The saved model may expect different input columns or "
-            "preprocessing. Its training code must be checked to fix "
-            "this mismatch correctly."
+    if (
+        not prediction_categories
+        or not prediction_subcategories
+    ):
+        st.warning(
+            "Prediction options are unavailable because the dataset "
+            "has no valid category or sub-category values."
         )
+
+    else:
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            prediction_category = st.selectbox(
+                "Prediction - Product Category",
+                prediction_categories,
+                key="prediction_category"
+            )
+
+        with col2:
+            prediction_subcategory = st.selectbox(
+                "Prediction - Product Sub-Category",
+                prediction_subcategories,
+                key="prediction_subcategory"
+            )
+
+        with col3:
+            sales_amount = st.number_input(
+                "Enter Sales Amount",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+                key="prediction_amount"
+            )
+
+        if st.button("Predict Profit", type="primary"):
+
+            input_data = pd.DataFrame({
+                "Product Category": [prediction_category],
+                "Product Sub-Category": [prediction_subcategory],
+                "Amount": [sales_amount]
+            })
+
+            try:
+                predictions = model.predict(input_data)
+
+                if predictions is None or len(predictions) == 0:
+                    st.error(
+                        "The model returned no prediction. "
+                        "Check the model training code."
+                    )
+                else:
+                    predicted_profit = float(predictions[0])
+
+                    st.success(
+                        f"Predicted Profit: {predicted_profit:,.2f}"
+                    )
+
+            except Exception as e:
+                st.error(
+                    "Profit prediction failed. The model's expected "
+                    "input format may differ from the supplied columns."
+                )
+                st.code(str(e))
+                st.info(
+                    "To fix the model correctly, check "
+                    "preprocess/train.py and the preprocessing used "
+                    "when model.pkl was created."
+                )
+
+st.caption("Sara Enterprises | Sales Analytics Project")
