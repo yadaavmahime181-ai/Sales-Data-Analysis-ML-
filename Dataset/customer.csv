@@ -1,0 +1,25 @@
+CustomerID,Order Date,Customer Name,State or Province,City,Gender
+7253,2015-01-07,Bonnie Potter,Washington,Anacortes,MALE
+4875,2015-06-13,Ronnie Proctor,California,San Gabriel,FEMALE
+2748,2015-02-15,Marcus Dunlap,New Jersey,Roselle,MALE
+4565,2015-05-12,Gwendolyn F Tyson,Minnesota,Prior Lake,MALE
+4666,2015-05-12,Gwendolyn F Tyson,Minnesota,Prior Lake,MALE
+4663,2015-05-12,Gwendolyn F Tyson,Minnesota,Prior Lake,FEMALE
+2583,2015-05-12,Gwendolyn F Tyson,Minnesota,Prior Lake,MALE
+8372,2015-04-08,Timothy Reese,New York,Smithtown,MALE
+6458,2015-05-28,Timothy Reese,New York,Smithtown,MALE
+2834,2015-02-12,Sarah Ramsey,New York,Syracuse,FEMALE
+8264,2015-02-12,Sarah Ramsey,New York,Syracuse,MALE
+8363,2015-05-15,Laurie Hanna,Montana,Helena,MALE
+4556,2015-05-21,Jim Rodgers,Montana,Missoula,MALE
+5243,2015-05-15,Tony Wilkins Winters,New York,New York City,FEMALE
+5654,2015-05-21,Tony Wilkins Winters,New York,New York City,MALE
+2357,2015-05-21,Tony Wilkins Winters,New York,New York City,MALE
+7876,2015-01-28,Edna Thomas,California,Laguna Niguel,MALE
+5265,2015-01-28,Edna Thomas,California,Laguna Niguel,FEMALE
+1573,2015-05-02,Guy Gallagher,California,Lakewood,MALE
+7356,2015-02-22,Matthew Berman,Oregon,Grants Pass,MALE
+3445,2015-03-27,Matthew Berman,Oregon,Grants Pass,MALE
+6735,2015-01-20,Matthew Berman,Oregon,Grants Pass,FEMALE
+8845,2015-03-12,Matthew Berman,Oregon,Grants Pass,MALE
+4568,2015-06-15,Ricky Hensley,Oregon,Gresham,MALE
